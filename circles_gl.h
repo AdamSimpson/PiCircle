@@ -18,12 +18,15 @@ typedef struct
 
     // Locations
     GLint position_location;
-    GLint tex_coord_location;
+    GLint color_location;
+
+    // Number of points to draw
+    int num_points;
 
     int terminate;
 } STATE_T;
 
-void create_vertices();
+void create_points(float *points, int num_points, STATE_T *state);
 void create_shaders(STATE_T *state);
 void draw_circles(STATE_T *state);
 

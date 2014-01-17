@@ -11,46 +11,20 @@
 
 #include "bcm_host.h"
 
-void create_vertices()
+void create_points(float *points, int num_points, STATE_T *state)
 {
-    // Vertices: Pos(x,y) Tex(x,y)
-    // For simplicity only single vbo is generated and offset used as needed
-    float vertices[] = {
-        -0.5f,  0.5f, 0.0f, 0.0f, // Top left
-         0.5f,  0.5f, 1.0f, 0.0f, // Top right
-         0.5f, -0.5f, 1.0f, 1.0f, // Bottom right
-	-0.5f, -0.5f, 0.0f, 1.0f,  // Bottom left
+    // Number of components for each point
+    int point_elements = 5;
+    // Number of points
+    state->num_points = num_points;
 
-         0.5f,  0.5f, 0.0f, 0.0f, // Top left
-         1.0f,  0.5f, 1.0f, 0.0f, // Top right
-         1.0f, -0.5f, 1.0f, 1.0f, // Bottom right
-	 0.5f, -0.5f, 0.0f, 1.0f  // Bottom left
-    };
-
-    // Generate vertex buffer
+    // Generate points buffer
     GLuint vbo;
     glGenBuffers(1, &vbo);
     // Set buffer
     glBindBuffer(GL_ARRAY_BUFFER, vbo);
     // Fill buffer
-    glBufferData(GL_ARRAY_BUFFER, 2*4*4*sizeof(GLfloat), vertices, GL_STATIC_DRAW);
-
-    // Elements
-    GLushort elements[] = {
-        2, 3, 0,
-        0, 1, 2,
-
-        6, 7, 4,
-	4, 5, 6
-    };
-
-    // Generate element buffer
-    GLuint ebo;
-    glGenBuffers(1, &ebo);
-    // Set buffer
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo);
-    // Fill buffer
-    glBufferData(GL_ELEMENT_ARRAY_BUFFER, 2*2*3*sizeof(GLushort), elements, GL_STATIC_DRAW);
+    glBufferData(GL_ARRAY_BUFFER, point_elements*state->num_points*sizeof(GLfloat), points, GL_DYNAMIC_DRAW);
 }
 
 void create_shaders(STATE_T *state)
@@ -58,21 +32,22 @@ void create_shaders(STATE_T *state)
     // Shader source
     const GLchar* vertexSource =
         "attribute vec2 position;"
-        "attribute vec2 tex_coord;"
-        "varying vec2 frag_tex_coord;"
+        "attribute vec3 color;"
+	"varying vec4 frag_color;"
         "void main() {"
         "   gl_Position = vec4(position, 0.0, 1.0);"
-        "   frag_tex_coord = tex_coord;"
+        "   gl_PointSize = 100.0;"
+	"   frag_color = vec4(color, 1.0);"
         "}";
     const GLchar* fragmentSource =
         "precision mediump float;"
-        "varying vec2 frag_tex_coord;"
+	"varying vec4 frag_color;"
         "const mediump vec2 center = vec2(0.5, 0.5);"
         "const mediump float radius = 0.5;"
         "void main() {"
-	"    mediump float distance_from_center = distance(center, frag_tex_coord);"
+	"    mediump float distance_from_center = distance(center, gl_PointCoord);"
 	"    lowp float in_radius = step(distance_from_center, radius);"
-        "    gl_FragColor = vec4(0.0, 0.0, 1.0, 1.0) * in_radius;"
+        "    gl_FragColor = frag_color * in_radius;"
         "}";
 
     // Compile vertex shader
@@ -102,7 +77,7 @@ void create_shaders(STATE_T *state)
     // Get position location
     state->position_location = glGetAttribLocation(state->program, "position");
     // Get tex_coord location
-    state->tex_coord_location = glGetAttribLocation(state->program, "tex_coord");
+    state->color_location = glGetAttribLocation(state->program, "color");
 }
 
 void draw_circles(STATE_T *state)
@@ -110,12 +85,16 @@ void draw_circles(STATE_T *state)
     glClearColor(0.5f, 0.5f, 0.5f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT);
 
+    // Blend is required to show cleared color when the frag shader draws transparent pixels
+    glEnable(GL_BLEND);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+
     // Size of each vertex in bytes
-    size_t vert_size = 4*sizeof(GL_FLOAT);
+    size_t vert_size = 5*sizeof(GL_FLOAT);
 
     glVertexAttribPointer(state->position_location, 2, GL_FLOAT, GL_FALSE, vert_size, 0);
     glEnableVertexAttribArray(state->position_location);
-    glVertexAttribPointer(state->tex_coord_location, 2, GL_FLOAT, GL_FALSE, vert_size,(void*)(2*sizeof(GL_FLOAT)));
-    glEnableVertexAttribArray(state->tex_coord_location);
-    glDrawElements(GL_TRIANGLES, 12, GL_UNSIGNED_SHORT, 0);
+    glVertexAttribPointer(state->color_location, 3, GL_FLOAT, GL_FALSE, vert_size,(void*)(2*sizeof(GL_FLOAT)));
+    glEnableVertexAttribArray(state->color_location);
+    glDrawArrays(GL_POINTS, 0, state->num_points);
 }

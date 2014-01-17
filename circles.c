@@ -14,8 +14,16 @@ int main(int argc, char *argv[])
         // Start OGLES
         init_ogl(&state.egl_state);
 
-        // Create and set vertices
-        create_vertices();
+        float points[] = {
+             // Center(x,y) Color(r,g,b)
+	     -0.5f,  0.5f, 0.0f, 0.0f, 1.0f,
+	      0.5f,  0.5f, 1.0f, 0.0f, 1.0f,
+	      0.5f, -0.5f, 1.0f, 1.0f, 1.0f,
+	     -0.5f, -0.5f, 0.0f, 1.0f, 1.0f,
+	};
+
+        // Create and bind points
+        create_points(points, 4, &state);
 
         // Create and set shaders
         create_shaders(&state);
